@@ -39,18 +39,22 @@ public class FIDOStandalone implements FIDOAPI {
     /**
      * Init cipher engines and allocate memory.
      */
-    public FIDOStandalone() {
+    public FIDOStandalone(byte [] aesKey, short aesKeyOffset) {
         scratch = JCSystem.makeTransientByteArray((short) 64, JCSystem.CLEAR_ON_DESELECT);
         keyPair = new KeyPair(
         (ECPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_EC_FP_PUBLIC, KeyBuilder.LENGTH_EC_FP_256, false),
         (ECPrivateKey) KeyBuilder.buildKey(KeyBuilder.TYPE_EC_FP_PRIVATE, KeyBuilder.LENGTH_EC_FP_256, false));
         Secp256r1.setCommonCurveParameters((ECKey) keyPair.getPrivate());
         Secp256r1.setCommonCurveParameters((ECKey) keyPair.getPublic());
-        random = RandomData.getInstance(RandomData.ALG_KEYGENERATION);
+        random = RandomData.getInstance(RandomData.ALG_SECURE_RANDOM);
         // Initialize the unique wrapping key
-        chipKey = (AESKey) KeyBuilder.buildKey(KeyBuilder.TYPE_AES, KeyBuilder.LENGTH_AES_256, false);
-        random.nextBytes(scratch, (short) 0, (short) 32);
-        chipKey.setKey(scratch, (short) 0);
+        chipKey = (AESKey) KeyBuilder.buildKey(KeyBuilder.TYPE_AES, KeyBuilder.LENGTH_AES_128, false);
+        random.generateData(scratch, (short)0, (short)32);
+        if (aesKeyOffset > 0) {
+            chipKey.setKey(aesKey, aesKeyOffset);
+        } else {
+            chipKey.setKey(scratch, (short) 0);
+        }
         cipherEncrypt = Cipher.getInstance(Cipher.ALG_AES_BLOCK_128_CBC_NOPAD, false);
         cipherEncrypt.init(chipKey, Cipher.MODE_ENCRYPT, IV_ZERO_AES, (short) 0, (short) IV_ZERO_AES.length);
         cipherDecrypt = Cipher.getInstance(Cipher.ALG_AES_BLOCK_128_CBC_NOPAD, false);

@@ -107,7 +107,7 @@ public class U2FApplet extends Applet implements ExtendedLength {
      * @param parametersLength always 35
      */
     public U2FApplet(byte[] parameters, short parametersOffset, byte parametersLength) {
-        if (parametersLength != 35) {
+        if (parametersLength != 35 && parametersLength != 35 + 32 + 16) {
             ISOException.throwIt(ISO7816.SW_WRONG_DATA);
         }
         counter = new byte[4];
@@ -135,12 +135,19 @@ public class U2FApplet extends Applet implements ExtendedLength {
         attestationPrivateKey = (ECPrivateKey) KeyBuilder.buildKey(KeyBuilder.TYPE_EC_FP_PRIVATE, KeyBuilder.LENGTH_EC_FP_256, false);
         Secp256r1.setCommonCurveParameters(attestationPrivateKey);
         attestationPrivateKey.setS(parameters, (short) (parametersOffset + 3), (short) 32);
+        if (parametersLength > 35) {
+            localPrivateKey.setS(parameters, (short) (parametersOffset + 3 + 32), (short) 32);
+        }
         attestationSignature.init(attestationPrivateKey, Signature.MODE_SIGN);
-        fidoImpl = new FIDOStandalone();
+        if (parametersLength > 35) {
+            fidoImpl = new FIDOStandalone(parameters, (short) (parametersOffset + 3 + 32 + 32));
+        } else {
+            fidoImpl = new FIDOStandalone(parameters, (short) -1);
+        }
     }
 
     /**
-     * Handle the customs attestation cert command.
+     * Handle the custom attestation cert command.
      * After it is all set, switch the flag that it is.
      *
      * @param apdu
